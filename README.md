@@ -31,12 +31,13 @@ tag (`24.04-20261106`) names one build.
 - **Command** — by default `sleep infinity`: the container lives until stopped.
   A command you pass runs after sshd has started. `tini` is PID 1 and forwards
   `SIGTERM`, so `docker stop` and pod termination are immediate.
-- **Entrypoint replaced by `sh -c "<command>"`** — what Kubernetes `command` and
-  Akash SDL `command: ["sh", "-c"]` do — still starts sshd: the image puts an `sh`
-  into `/usr/local/bin`, ahead of `/bin` on `PATH`; run as PID 1 it does the same
-  start-up and then runs `/bin/sh` under `tini`. Run as any other process it is
-  plain `/bin/sh`. Other entrypoint replacements (`bash -c`, an absolute
-  `/bin/sh`) skip sshd.
+- **Entrypoint replaced by `sh -c "<command>"` or `bash -c "<command>"`** — what
+  Kubernetes `command` and Akash SDL `command: ["sh", "-c"]` do — still starts
+  sshd: the image puts `sh` and `bash` into `/usr/local/bin`, ahead of `/bin` on
+  `PATH`; run as PID 1 they do the same start-up and then run `/bin/sh` or
+  `/bin/bash` under `tini`. Run as any other process they are plain `/bin/sh` and
+  `/bin/bash`. Other entrypoint replacements (an absolute `/bin/sh`, another
+  program) skip sshd.
 - **Packages** — openssh-server, ca-certificates, curl, less, vim-tiny, iproute2,
   procps, tini.
 

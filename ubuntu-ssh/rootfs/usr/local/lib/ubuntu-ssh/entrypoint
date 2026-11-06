@@ -1,0 +1,43 @@
+#!/bin/sh
+# Start sshd with the keys from SSH_PUBKEY, then run the given command.
+set -u
+
+log() { echo "ubuntu-ssh: $*" >&2; }
+
+keys=/root/.ssh/authorized_keys
+user_umask=$(umask)
+umask 077
+mkdir -p /root/.ssh
+touch "$keys"
+chmod 700 /root/.ssh
+chmod 600 "$keys"
+
+if [ -n "${SSH_PUBKEY:-}" ]; then
+  if [ -s "$keys" ] && [ -n "$(tail -c 1 "$keys")" ]; then
+    echo >> "$keys"
+  fi
+  added=0
+  printf '%s\n' "$SSH_PUBKEY" | tr -d '\r' > /run/ubuntu-ssh-keys
+  while IFS= read -r key; do
+    case "$key" in '' | '#'*) continue ;; esac
+    if ! grep -qxF -- "$key" "$keys"; then
+      printf '%s\n' "$key" >> "$keys"
+      added=$((added + 1))
+    fi
+  done < /run/ubuntu-ssh-keys
+  rm -f /run/ubuntu-ssh-keys
+  log "added $added key(s) from SSH_PUBKEY"
+else
+  log "SSH_PUBKEY is not set; only keys already in $keys are accepted"
+fi
+
+mkdir -p /run/sshd
+chmod 755 /run/sshd
+if ssh-keygen -A >/dev/null && /usr/sbin/sshd; then
+  log "sshd started"
+else
+  log "sshd failed to start"
+fi
+
+umask "$user_umask"
+exec "$@"
