@@ -1,0 +1,66 @@
+#!/bin/sh
+# Start sshd with the keys from SSH_PUBKEY, preserve container env for SSH sessions, then run the command.
+set -u
+
+log() { echo "fluence-ssh: $*" >&2; }
+
+keys=/root/.ssh/authorized_keys
+user_umask=$(umask)
+umask 077
+mkdir -p /root/.ssh
+touch "$keys"
+chmod 700 /root/.ssh
+chmod 600 "$keys"
+
+if [ -n "${SSH_PUBKEY:-}" ]; then
+  if [ -s "$keys" ] && [ -n "$(tail -c 1 "$keys")" ]; then
+    echo >> "$keys"
+  fi
+  added=0
+  printf '%s\n' "$SSH_PUBKEY" | tr -d '\r' > /run/fluence-ssh-keys
+  while IFS= read -r key; do
+    case "$key" in '' | '#'*) continue ;; esac
+    if ! grep -qxF -- "$key" "$keys"; then
+      printf '%s\n' "$key" >> "$keys"
+      added=$((added + 1))
+    fi
+  done < /run/fluence-ssh-keys
+  rm -f /run/fluence-ssh-keys
+  log "added $added key(s) from SSH_PUBKEY"
+else
+  log "SSH_PUBKEY is not set; only keys already in $keys are accepted"
+fi
+
+# Preserve single-line container environment variables (PATH, CUDA_HOME, LD_LIBRARY_PATH,
+# HF_TOKEN, etc.) for SSH login and non-login sessions via PAM (/etc/environment).
+# Never export SSH_PUBKEY or shell session metadata.
+if [ -w /etc ]; then
+  sep=$(printf '\037')
+  : > /etc/environment
+  chmod 600 /etc/environment
+  env -0 | tr '\n' '\037' | tr '\0' '\n' | while IFS='=' read -r k v; do
+    case "$k" in
+      '' | SSH_PUBKEY | HOME | PWD | OLDPWD | SHLVL | _ | HOSTNAME | TERM | USER | LOGNAME | SHELL | MAIL | LS_COLORS)
+        continue
+        ;;
+    esac
+    case "$v" in
+      *"$sep"*) continue ;;
+    esac
+    case "$k" in
+      *[!A-Za-z0-9_]*) continue ;;
+    esac
+    printf '%s=%s\n' "$k" "$v" >> /etc/environment
+  done
+fi
+
+mkdir -p /run/sshd
+chmod 755 /run/sshd
+if ssh-keygen -A >/dev/null && /usr/sbin/sshd; then
+  log "sshd started"
+else
+  log "sshd failed to start"
+fi
+
+umask "$user_umask"
+exec "$@"

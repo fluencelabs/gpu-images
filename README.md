@@ -1,12 +1,15 @@
 # gpu-images
 
-Public base container images for Fluence GPU containers, published on Docker Hub
-under `docker.io/fluencelabs`.
+Public container images for Fluence GPU containers, published on GitHub Container
+Registry under `ghcr.io/fluencelabs` (with optional mirrors on Docker Hub under
+`docker.io/fluencelabs`). Platform: `linux/amd64`.
 
 ## ubuntu-ssh
 
-`docker.io/fluencelabs/ubuntu-ssh` — Ubuntu with an OpenSSH server that the image
-starts by itself, for GPU containers reached over SSH. Platform: `linux/amd64`.
+`ghcr.io/fluencelabs/ubuntu-ssh` — minimal Ubuntu with an OpenSSH server that the
+image starts by itself, for GPU containers reached over SSH. Host NVIDIA drivers
+and GPUs are mounted by the runtime; CUDA Toolkit, Python, and ML frameworks are
+not preinstalled.
 
 | Tags | Base |
 |---|---|
@@ -15,9 +18,11 @@ starts by itself, for GPU containers reached over SSH. Platform: `linux/amd64`.
 
 Images are rebuilt on every change to `main` and weekly, picking up Ubuntu
 security updates. The version tag (`24.04`) moves to the latest build; the dated
-tag (`24.04-20261106`) names one build.
+tag (`24.04-20261127`) names one immutable build.
 
-### Contract
+## Shared SSH Contract
+
+Every image in this repository shares the `shared/` SSH and `tini` runtime layer:
 
 - **`SSH_PUBKEY`** — one or more OpenSSH public keys, one per line. At start every
   key not yet present in `/root/.ssh/authorized_keys` is appended; keys already in
@@ -25,39 +30,38 @@ tag (`24.04-20261106`) names one build.
   still starts, and only keys already in the file are accepted.
 - **Login** — `root`, by key only: password and keyboard-interactive
   authentication are off, `PermitRootLogin prohibit-password`.
-- **Host keys** — generated when a container starts; the image contains none, so
+- **Host keys** — generated when a container starts; images contain none, so
   containers never share host keys.
-- **Port** — `22/tcp`.
-- **Command** — by default `sleep infinity`: the container lives until stopped.
-  A command you pass runs after sshd has started. `tini` is PID 1 and forwards
-  `SIGTERM`, so `docker stop` and pod termination are immediate.
-- **Entrypoint replaced by `sh -c "<command>"`** — what Kubernetes `command` and
-  Akash SDL `command: ["sh", "-c"]` do — still starts sshd: the image puts an `sh`
-  into `/usr/local/bin`, ahead of `/bin` on `PATH`; run as PID 1 it does the same
-  start-up and then runs `/bin/sh` under `tini`. Run as any other process it is
-  plain `/bin/sh`. Other entrypoint replacements (`bash -c`, an absolute
-  `/bin/sh`) skip sshd.
-- **Packages** — openssh-server, ca-certificates, curl, less, vim-tiny, iproute2,
-  procps, tini.
+- **Container environment** — single-line container environment variables (such as
+  `PATH`, `CUDA_HOME`, `LD_LIBRARY_PATH`, `HF_TOKEN`) are preserved for SSH
+  sessions via `/etc/environment`, excluding `SSH_PUBKEY`.
+- **Port** — `22/tcp` (plus any workload-specific port).
+- **Command** — `tini` is PID 1 and forwards `SIGTERM`, so `docker stop` and pod
+  termination are immediate.
+- **Entrypoint replaced by `sh -c "<command>"` or `bash -c "<command>"`** — what
+  Kubernetes `command` and Akash SDL `command: ["sh", "-c"]` do — still starts
+  sshd: images put `sh` and `bash` into `/usr/local/bin`, ahead of `/bin` on
+  `PATH`; run as PID 1 they run the same start-up and then exec `/bin/sh` or
+  `/bin/bash` under `tini`.
 
-### Pinning a digest
+## Pinning a build
 
-Version tags move weekly. To keep one build, reference it by digest:
+Version tags move weekly. To keep one build, use its dated tag or digest:
 
 ```sh
-docker buildx imagetools inspect docker.io/fluencelabs/ubuntu-ssh:24.04 \
+docker buildx imagetools inspect ghcr.io/fluencelabs/ubuntu-ssh:24.04 \
   --format '{{json .Manifest.Digest}}'
-# docker.io/fluencelabs/ubuntu-ssh:24.04@sha256:<digest>
+# ghcr.io/fluencelabs/ubuntu-ssh:24.04@sha256:<digest>
 ```
 
 The digest of every published build is also printed in the summary of its
 workflow run.
 
-### Example
+## Example
 
 ```sh
 docker run -d -p 2222:22 -e SSH_PUBKEY="$(cat ~/.ssh/id_ed25519.pub)" \
-  docker.io/fluencelabs/ubuntu-ssh:24.04
+  ghcr.io/fluencelabs/ubuntu-ssh:24.04
 ssh -p 2222 root@localhost
 ```
 

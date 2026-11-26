@@ -1,0 +1,8 @@
+#!/bin/sh
+# Installed as sh and bash ahead of /bin on PATH: a replaced ENTRYPOINT
+# (Kubernetes `command`, Akash SDL `command: ["sh", "-c"]`) still starts sshd.
+real="/bin/${0##*/}"
+if [ "$$" -eq 1 ]; then
+  exec /usr/bin/tini -- /usr/local/lib/fluence-ssh/entrypoint "$real" "$@"
+fi
+exec "$real" "$@"
