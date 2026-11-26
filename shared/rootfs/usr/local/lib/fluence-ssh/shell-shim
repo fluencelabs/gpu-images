@@ -3,6 +3,6 @@
 # (Kubernetes `command`, Akash SDL `command: ["sh", "-c"]`) still starts sshd.
 real="/bin/${0##*/}"
 if [ "$$" -eq 1 ]; then
-  exec /usr/bin/tini -- /usr/local/lib/ubuntu-ssh/entrypoint "$real" "$@"
+  exec /usr/bin/tini -- /usr/local/lib/fluence-ssh/entrypoint "$real" "$@"
 fi
 exec "$real" "$@"

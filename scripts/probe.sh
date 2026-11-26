@@ -6,11 +6,16 @@ set -euo pipefail
 image=${1:?usage: probe.sh <image>}
 platform=${PROBE_PLATFORM:-linux/amd64}
 label=gpu-images-probe
+run_id="$$-$(date +%s)"
 work=$(mktemp -d)
-containers=()
 
 cleanup() {
-  for c in "${containers[@]}"; do docker rm -f "$c" >/dev/null 2>&1 || true; done
+  local ids
+  ids=$(docker ps -aq --filter "label=$label=$run_id" 2>/dev/null || true)
+  if [ -n "$ids" ]; then
+    # shellcheck disable=SC2086
+    docker rm -f $ids >/dev/null 2>&1 || true
+  fi
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -23,10 +28,7 @@ ssh-keygen -q -t ed25519 -N '' -C probe-bad -f "$work/bad"
 ssh-keygen -q -t ed25519 -N '' -C probe-extra -f "$work/extra"
 
 start() {
-  local c
-  c=$(docker run -d --platform "$platform" --label "$label=1" -p 127.0.0.1::22 "$@")
-  containers+=("$c")
-  echo "$c"
+  docker run -d --platform "$platform" --label "$label=$run_id" -p 127.0.0.1::22 "$@"
 }
 
 port_of() { docker port "$1" 22/tcp | head -n1 | sed 's/.*://'; }
@@ -70,9 +72,14 @@ fi
 pass "image contains no host keys"
 
 # Default entrypoint and command.
-c=$(start -e SSH_PUBKEY="$pub" "$image")
+c=$(start -e SSH_PUBKEY="$pub" -e FLUENCE_PROBE_ENV="ok-123" "$image")
 expect_login "$c" "default"
 port=$(port_of "$c")
+[ "$(ssh_as "$work/good" "$port" 'printf %s "${FLUENCE_PROBE_ENV:-}"')" = "ok-123" ] \
+  || fail "container env var not visible over SSH"
+[ -z "$(ssh_as "$work/good" "$port" 'printf %s "${SSH_PUBKEY:-}"')" ] \
+  || fail "SSH_PUBKEY leaked into SSH session env"
+pass "container env preserved over SSH without leaking SSH_PUBKEY"
 if ssh_as "$work/bad" "$port" true 2>/dev/null; then fail "foreign key accepted"; fi
 pass "foreign key refused"
 methods=$(ssh -F /dev/null -p "$port" -o BatchMode=yes -o PubkeyAuthentication=no \
@@ -86,7 +93,7 @@ pass "sshd -T: passwordauthentication no"
 key1=$(docker exec "$c" cat /etc/ssh/ssh_host_ed25519_key.pub)
 
 # Existing keys are kept and SSH_PUBKEY is not duplicated on restart.
-docker exec "$c" sh -c "cat >> /root/.ssh/authorized_keys" < "$work/extra.pub"
+docker exec -i "$c" sh -c "cat >> /root/.ssh/authorized_keys" < "$work/extra.pub"
 docker restart -t 2 "$c" >/dev/null
 port=$(wait_ssh "$c")
 [ "$(ssh_as "$work/extra" "$port" id -u)" = 0 ] || fail "existing key lost after restart"
