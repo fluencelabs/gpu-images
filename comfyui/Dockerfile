@@ -3,6 +3,7 @@ FROM docker.io/pytorch/pytorch:2.11.0-cuda12.8-cudnn9-runtime@sha256:eee11b3b387
 ARG COMFYUI_VERSION=v0.46.0
 ARG COMFYUI_MANAGER_VERSION=4.4.3
 ARG DEBIAN_FRONTEND=noninteractive
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 COPY shared/rootfs/ /
 RUN --mount=type=bind,source=shared/install-ssh.sh,target=/tmp/install-ssh.sh \

@@ -1,6 +1,7 @@
 FROM docker.io/pytorch/pytorch:2.11.0-cuda12.8-cudnn9-runtime@sha256:eee11b3b3872a8c838e35ef48f08b2d5def2080902c7f666831310ca1a0ef2be
 
 ARG DEBIAN_FRONTEND=noninteractive
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 COPY shared/rootfs/ /
 RUN --mount=type=bind,source=shared/install-ssh.sh,target=/tmp/install-ssh.sh \
     sh /tmp/install-ssh.sh \
