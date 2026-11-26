@@ -43,6 +43,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     env:
       GHCR_IMAGE: ghcr.io/fluencelabs/${{ inputs.image_name }}
       DOCKERHUB_IMAGE: docker.io/fluencelabs/${{ inputs.image_name }}
@@ -54,18 +55,29 @@ jobs:
         if: inputs.free_disk
         run: |
           df -h
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/share/boost \
+            /usr/local/graalvm \
+            /usr/share/swift
           docker system prune -af >/dev/null 2>&1 || true
           df -h
 
       - name: Build
         env:
           BUILD_ARGS_RAW: ${{ inputs.build_args }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           args=()
           while IFS= read -r line; do
             [ -n "$line" ] && args+=(--build-arg "$line")
           done <<< "$BUILD_ARGS_RAW"
+          if [ "$EVENT_NAME" = "schedule" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            args+=(--pull --no-cache)
+          fi
           docker build --platform linux/amd64 \
             -f "${{ inputs.dockerfile }}" \
             "${args[@]}" \
@@ -77,6 +89,32 @@ jobs:
       - name: Probe image workload
         if: inputs.probe_script != ''
         run: ${{ inputs.probe_script }} "$LOCAL"
+
+      - name: Scan image for HIGH/CRITICAL CVEs (Trivy)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.LOCAL }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Summarize Trivy CVE scan
+        if: always()
+        run: |
+          if [ -f trivy-results.sarif ]; then
+            count=$(python3 -c "import json; d=json.load(open('trivy-results.sarif')); print(sum(len(r.get('results',[])) for r in d.get('runs',[])))")
+            echo "Trivy fixable HIGH/CRITICAL findings for \`${{ inputs.image_name }}:${{ inputs.tag }}\`: **$count**" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Trivy SARIF to GitHub Security
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@38112626f97ac1fd7acf3df7ebca51f4677c1b38 # codeql-bundle-v2.27.6
+        with:
+          sarif_file: trivy-results.sarif
+          category: ${{ inputs.image_name }}-${{ inputs.tag }}
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'

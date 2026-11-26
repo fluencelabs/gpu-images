@@ -1,0 +1,39 @@
+name: cuda-devel
+
+on:
+  pull_request:
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-cuda.sh"
+      - "cuda-devel/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/cuda-devel.yml"
+  push:
+    branches: [main]
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-cuda.sh"
+      - "cuda-devel/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/cuda-devel.yml"
+  schedule:
+    - cron: "27 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  image:
+    uses: ./.github/workflows/_image.yml
+    with:
+      image_name: cuda-devel
+      tag: 12.8-ubuntu24.04
+      dockerfile: cuda-devel/Dockerfile
+      probe_script: scripts/probe-cuda.sh
+      free_disk: true
+    secrets: inherit

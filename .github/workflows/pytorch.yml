@@ -1,0 +1,39 @@
+name: pytorch
+
+on:
+  pull_request:
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-pytorch.sh"
+      - "pytorch/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/pytorch.yml"
+  push:
+    branches: [main]
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-pytorch.sh"
+      - "pytorch/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/pytorch.yml"
+  schedule:
+    - cron: "37 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  image:
+    uses: ./.github/workflows/_image.yml
+    with:
+      image_name: pytorch
+      tag: 2.11-cuda12.8
+      dockerfile: pytorch/Dockerfile
+      probe_script: scripts/probe-pytorch.sh
+      free_disk: true
+    secrets: inherit

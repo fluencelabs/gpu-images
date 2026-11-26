@@ -1,0 +1,39 @@
+name: comfyui
+
+on:
+  pull_request:
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-comfyui.sh"
+      - "comfyui/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/comfyui.yml"
+  push:
+    branches: [main]
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-comfyui.sh"
+      - "comfyui/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/comfyui.yml"
+  schedule:
+    - cron: "07 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  image:
+    uses: ./.github/workflows/_image.yml
+    with:
+      image_name: comfyui
+      tag: 0.46-cuda12.8
+      dockerfile: comfyui/Dockerfile
+      probe_script: scripts/probe-comfyui.sh
+      free_disk: true
+    secrets: inherit

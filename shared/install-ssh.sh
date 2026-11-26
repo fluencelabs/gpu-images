@@ -1,9 +1,10 @@
 #!/bin/sh
-# Install the shared Fluence SSH + tini runtime layer into an Ubuntu/Debian-based image.
+# Install the shared Fluence SSH + tini runtime layer and apply OS security updates.
 set -eu
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
+apt-get -y upgrade
 apt-get install -y --no-install-recommends \
   openssh-server ca-certificates curl less vim-tiny iproute2 procps tini
 rm -rf /var/lib/apt/lists/*

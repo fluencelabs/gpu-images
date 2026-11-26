@@ -6,8 +6,6 @@ FROM docker.io/library/ubuntu:22.04@sha256:076e7bf82319619f28dd0aa9c02ab34b055ad
 FROM base-${UBUNTU_VERSION}
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
-
 COPY shared/rootfs/ /
 RUN --mount=type=bind,source=shared/install-ssh.sh,target=/tmp/install-ssh.sh \
     sh /tmp/install-ssh.sh
