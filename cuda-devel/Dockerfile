@@ -1,4 +1,4 @@
-FROM docker.io/nvidia/cuda:12.8.2-devel-ubuntu24.04@sha256:7fc48a36965c6d0e5c9717dd899b2851cabb2dfef43d95dd12046a2d40bdc90f
+FROM docker.io/nvidia/cuda:13.5.0-devel-ubuntu24.04@sha256:d3fa71793540a2b76ab227ee00016e754da2758b7a51b49bc8a72543af5a8bc2
 
 ARG DEBIAN_FRONTEND=noninteractive
 COPY shared/rootfs/ /
