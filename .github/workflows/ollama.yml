@@ -1,0 +1,39 @@
+name: ollama
+
+on:
+  pull_request:
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-ollama.sh"
+      - "ollama/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/ollama.yml"
+  push:
+    branches: [main]
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-ollama.sh"
+      - "ollama/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/ollama.yml"
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  image:
+    uses: ./.github/workflows/_image.yml
+    with:
+      image_name: ollama
+      tag: "0.40"
+      dockerfile: ollama/Dockerfile
+      probe_script: scripts/probe-ollama.sh
+      free_disk: true
+    secrets: inherit

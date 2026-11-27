@@ -1,0 +1,39 @@
+name: sglang
+
+on:
+  pull_request:
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-sglang.sh"
+      - "sglang/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/sglang.yml"
+  push:
+    branches: [main]
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-sglang.sh"
+      - "sglang/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/sglang.yml"
+  schedule:
+    - cron: "57 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  image:
+    uses: ./.github/workflows/_image.yml
+    with:
+      image_name: sglang
+      tag: "0.5"
+      dockerfile: sglang/Dockerfile
+      probe_script: scripts/probe-sglang.sh
+      free_disk: true
+    secrets: inherit

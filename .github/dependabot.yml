@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    labels: ["dependencies", "security"]
+
+  - package-ecosystem: "docker"
+    directories:
+      - "/ubuntu-ssh"
+      - "/cuda-devel"
+      - "/pytorch"
+      - "/vllm"
+      - "/sglang"
+      - "/comfyui"
+      - "/ollama"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    labels: ["dependencies", "security"]

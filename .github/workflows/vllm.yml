@@ -1,0 +1,39 @@
+name: vllm
+
+on:
+  pull_request:
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-vllm.sh"
+      - "vllm/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/vllm.yml"
+  push:
+    branches: [main]
+    paths:
+      - "shared/**"
+      - "scripts/probe.sh"
+      - "scripts/probe-vllm.sh"
+      - "vllm/**"
+      - ".github/workflows/_image.yml"
+      - ".github/workflows/vllm.yml"
+  schedule:
+    - cron: "47 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  image:
+    uses: ./.github/workflows/_image.yml
+    with:
+      image_name: vllm
+      tag: "0.34"
+      dockerfile: vllm/Dockerfile
+      probe_script: scripts/probe-vllm.sh
+      free_disk: true
+    secrets: inherit
